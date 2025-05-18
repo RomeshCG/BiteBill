@@ -1,5 +1,5 @@
-import HomePage from "./pages/HomePage";
+import HomePage from "../pages/api/HomePage";
 
-export default function Home() {
+export default function Page() {
   return <HomePage />;
 }
