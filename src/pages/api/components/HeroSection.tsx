@@ -1,6 +1,9 @@
+"use client";
 import React from "react";
+import { useRouter } from "next/navigation";
 
 export default function HeroSection() {
+  const router = useRouter();
   return (
     <section className="flex flex-col items-center justify-center py-24 relative">
       {/* Left Glow */}
@@ -13,7 +16,10 @@ export default function HeroSection() {
       <p className="text-2xl text-center text-gray-200 mb-8 font-medium">
         Split lunch bills easily with your team
       </p>
-      <button className="bg-[#a78bfa] hover:bg-[#bfa3fa] text-white font-semibold px-8 py-3 rounded-full shadow-lg transition-all text-lg">
+      <button
+        className="bg-[#a78bfa] hover:bg-[#bfa3fa] text-white font-semibold px-8 py-3 rounded-full shadow-lg transition-all text-lg"
+        onClick={() => router.push("/login")}
+      >
         Start Splitting
       </button>
     </section>
