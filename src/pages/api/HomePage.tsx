@@ -1,9 +1,9 @@
 import React from "react";
-import HeroSection from "./components/HeroSection";
-import ReceiptCard from "./components/ReceiptCard";
-import FeaturesSection from "./components/FeaturesSection";
-import TestimonialsSection from "./components/TestimonialsSection";
-import Footer from "./components/Footer";
+import HeroSection from "../../components/HeroSection";
+import ReceiptCard from "../../components/ReceiptCard";
+import FeaturesSection from "../../components/FeaturesSection";
+import TestimonialsSection from "../../components/TestimonialsSection";
+import Footer from "../../components/Footer";
 
 export default function HomePage() {
   return (

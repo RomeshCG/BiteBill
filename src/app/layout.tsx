@@ -1,5 +1,6 @@
 import "./globals.css";
 import type { Metadata } from "next";
+import { UserProvider } from "./UserProvider";
 
 export const metadata: Metadata = {
   title: "BiteBill | Effortless Bill Splitting",
@@ -10,7 +11,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="min-h-screen flex flex-col bg-background antialiased">
-        {children}
+        <UserProvider>{children}</UserProvider>
       </body>
     </html>
   );
