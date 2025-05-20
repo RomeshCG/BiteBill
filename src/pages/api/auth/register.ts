@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { supabase } from "../../../../lib/supabase";
+import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
@@ -21,11 +22,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   // Upsert profile row for this user after registration
   const user = data.user;
   if (user) {
-    await supabase.from("profiles").upsert({
+    await supabaseAdmin.from("profiles").upsert({
       id: user.id,
       full_name: full_name || user.email,
       avatar_url: user.user_metadata?.avatar_url || null,
-    });
+      email: user.email,
+    }, { onConflict: 'id' });
   }
 
   res.status(200).json({ user: data.user });

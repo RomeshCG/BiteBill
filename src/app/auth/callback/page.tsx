@@ -19,6 +19,7 @@ export default function OAuthCallback() {
           id: session.user.id,
           full_name: session.user.user_metadata.full_name || session.user.email,
           avatar_url: session.user.user_metadata.avatar_url || null,
+          email: session.user.email,
         });
         router.replace("/dashboard");
       } else {
