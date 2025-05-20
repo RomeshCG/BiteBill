@@ -2,8 +2,16 @@
 import React from "react";
 import { FaUsers, FaHistory, FaCog, FaHome } from "react-icons/fa";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function DashboardSidebar({ userName }: { userName: string }) {
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+  };
+
   return (
     <aside className="bg-[#10182A] text-white w-full sm:w-64 flex-shrink-0 py-6 px-4 flex flex-col min-h-screen">
       <div className="mb-8">
@@ -24,6 +32,12 @@ export default function DashboardSidebar({ userName }: { userName: string }) {
           <FaCog /> Settings
         </Link>
       </nav>
+      <button
+        onClick={handleLogout}
+        className="mt-8 px-3 py-2 rounded-lg bg-[#4fd1c5] text-[#10182A] font-semibold hover:bg-[#38b2ac] transition-colors"
+      >
+        Logout
+      </button>
     </aside>
   );
 }

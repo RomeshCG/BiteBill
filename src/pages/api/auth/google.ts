@@ -16,3 +16,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   res.status(200).json({ url: data.url });
 }
+
+// After Google OAuth, upsert a profile row for the user (if you handle the callback here)
+// If you use a Supabase callback URL, ensure the profile is upserted after OAuth login in your app logic.

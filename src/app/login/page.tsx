@@ -33,7 +33,7 @@ export default function LoginPage() {
     const res = await fetch("/api/auth/google", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ redirectTo: window.location.origin + "/dashboard" }),
+      body: JSON.stringify({ redirectTo: window.location.origin + "/auth/callback" }),
     });
     const data = await res.json();
     setLoading(false);

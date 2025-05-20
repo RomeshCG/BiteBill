@@ -15,5 +15,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (error) return res.status(400).json({ error: error.message });
 
+  // Upsert profile row for this user after successful login
+  const user = data.user;
+  if (user) {
+    await supabase.from("profiles").upsert({
+      id: user.id,
+      full_name: user.user_metadata?.full_name || user.email,
+      avatar_url: user.user_metadata?.avatar_url || null,
+    });
+  }
+
   res.status(200).json({ user: data.user, session: data.session });
 }
