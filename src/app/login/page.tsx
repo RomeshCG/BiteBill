@@ -1,6 +1,12 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,18 +19,26 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     setError("");
-    const res = await fetch("/api/auth/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+    // Use Supabase client directly for login
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     });
-    const data = await res.json();
-    setLoading(false);
-    if (res.ok) {
-      router.push("/dashboard");
-    } else {
-      setError(data.error || "Login failed");
+    if (error) {
+      setError(error.message || "Login failed");
+      setLoading(false);
+      return;
     }
+    // Upsert profile after login
+    if (data.user) {
+      await supabase.from("profiles").upsert({
+        id: data.user.id,
+        full_name: data.user.user_metadata?.full_name || data.user.email,
+        avatar_url: data.user.user_metadata?.avatar_url || null,
+      });
+    }
+    setLoading(false);
+    router.push("/dashboard");
   };
 
   const handleGoogle = async () => {

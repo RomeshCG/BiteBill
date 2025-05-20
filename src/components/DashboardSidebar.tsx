@@ -2,14 +2,13 @@
 import React from "react";
 import { FaUsers, FaHistory, FaCog, FaHome } from "react-icons/fa";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 
 export default function DashboardSidebar({ userName }: { userName: string }) {
-  const router = useRouter();
-
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
-    router.push("/login");
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.href = "/login";
   };
 
   return (

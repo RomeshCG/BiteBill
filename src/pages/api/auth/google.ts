@@ -9,6 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     provider: "google",
     options: {
       redirectTo: redirectTo || undefined,
+      queryParams: { prompt: "select_account" },
     },
   });
 
