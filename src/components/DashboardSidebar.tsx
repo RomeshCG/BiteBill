@@ -33,7 +33,7 @@ export default function DashboardSidebar({ userName }: { userName: string }) {
         <Link
           href="/teams"
           className={`flex items-center gap-3 px-3 py-2 rounded-lg font-medium ${
-            pathname === "/teams" ? "bg-[#17223b]" : "hover:bg-[#17223b]"
+            pathname && pathname.startsWith("/teams") ? "bg-[#17223b]" : "hover:bg-[#17223b]"
           }`}
         >
           <FaUsers /> Teams
