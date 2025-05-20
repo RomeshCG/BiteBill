@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import { FaBars } from "react-icons/fa";
+import { useUser } from "@/app/UserProvider";
 
 interface Member {
   user_id: string;
@@ -23,10 +24,17 @@ export default function TeamDetailsPage() {
   const teamId = params && typeof params.teamId === 'string' ? params.teamId : Array.isArray(params?.teamId) ? params.teamId[0] : '';
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [team, setTeam] = useState<{ id: string; name: string; created_at: string } | null>(null);
+  // Add created_by to team type
+  const [team, setTeam] = useState<{ id: string; name: string; created_at: string; created_by?: string } | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { profile } = useUser() || {};
+
+  // Add Team Member form state
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteStatus, setInviteStatus] = useState<string | null>(null);
+  const [inviteLoading, setInviteLoading] = useState(false);
 
   // Responsive sidebar toggle
   const handleSidebarToggle = () => setSidebarOpen((open) => !open);
@@ -39,7 +47,7 @@ export default function TeamDetailsPage() {
         const res = await fetch(`/api/team-details?teamId=${teamId}`);
         if (!res.ok) throw new Error("Failed to fetch team details");
         const data = await res.json();
-        setTeam(data.team);
+        setTeam(data.team); // team.created_by will now be present
         setMembers(data.members);
         setReceipts(data.receipts);
       } catch {
@@ -50,6 +58,35 @@ export default function TeamDetailsPage() {
     }
     if (teamId) fetchTeamDetails();
   }, [teamId]);
+
+  // Add Team Member handler
+  async function handleAddMember(e: React.FormEvent) {
+    e.preventDefault();
+    setInviteStatus(null);
+    setInviteLoading(true);
+    try {
+      const res = await fetch("/api/dashboard/add-team-member", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          team_id: teamId,
+          email: inviteEmail,
+          invited_by: profile?.id,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setInviteStatus(data.message || "Success");
+        setInviteEmail("");
+      } else {
+        setInviteStatus(data.error || "Error sending invite");
+      }
+    } catch {
+      setInviteStatus("Error sending invite");
+    } finally {
+      setInviteLoading(false);
+    }
+  }
 
   if (loading) return <div className="flex items-center justify-center min-h-screen text-white">Loading...</div>;
   if (error) return <div className="flex items-center justify-center min-h-screen text-red-400">{error}</div>;
@@ -81,10 +118,34 @@ export default function TeamDetailsPage() {
       </aside>
       {/* Main content */}
       <main className="flex-1 flex flex-col items-center w-full p-4 sm:p-8 ml-0 sm:ml-64">
-        <div className="sm:mt-0 mt-20 w-full max-w-2xl"> {/* Push content down on mobile for toggle button */}
+        <div className="sm:mt-0 mt-20 w-full max-w-2xl">
           <div className="bg-[#17223b] rounded-2xl p-6 mb-6 shadow-lg border border-[#232e47]">
             <h1 className="text-2xl font-bold text-white mb-2">{team?.name}</h1>
             <div className="text-sm text-gray-400 mb-2">Created at: {team ? new Date(team.created_at).toLocaleDateString() : ""}</div>
+            {/* Add Team Member Form - only for team creator */}
+            {profile?.id === team?.created_by && (
+              <form onSubmit={handleAddMember} className="mb-4 flex flex-col sm:flex-row gap-2 items-start sm:items-end">
+                <input
+                  type="email"
+                  required
+                  placeholder="Enter member's email"
+                  value={inviteEmail}
+                  onChange={e => setInviteEmail(e.target.value)}
+                  className="rounded px-3 py-2 border border-[#4fd1c5] bg-[#10182A] text-white focus:outline-none focus:ring-2 focus:ring-[#4fd1c5]"
+                  disabled={inviteLoading}
+                />
+                <button
+                  type="submit"
+                  className="bg-[#4fd1c5] text-[#10182A] font-semibold px-4 py-2 rounded hover:bg-[#38b2ac] transition-colors disabled:opacity-50"
+                  disabled={inviteLoading}
+                >
+                  {inviteLoading ? "Adding..." : "Add Member"}
+                </button>
+                {inviteStatus && (
+                  <span className={`ml-2 text-sm ${inviteStatus.includes("success") || inviteStatus.includes("added") ? "text-green-400" : "text-red-400"}`}>{inviteStatus}</span>
+                )}
+              </form>
+            )}
             <div className="mt-4">
               <h2 className="text-lg font-semibold text-[#4fd1c5] mb-2">Members</h2>
               <ul className="divide-y divide-[#232e47]">
