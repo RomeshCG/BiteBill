@@ -122,7 +122,8 @@ export default function TeamsPage() {
                 {teams.map(team => (
                   <div
                     key={team.id}
-                    className="bg-[#17223b] rounded-2xl p-6 flex flex-col items-start shadow-lg hover:shadow-xl transition group border border-transparent hover:border-[#4fd1c5]"
+                    className="bg-[#17223b] rounded-2xl p-6 flex flex-col items-start shadow-lg hover:shadow-xl transition group border border-transparent hover:border-[#4fd1c5] cursor-pointer"
+                    onClick={() => window.location.href = `/teams/${team.id}`}
                   >
                     <div className="flex items-center gap-3 mb-2">
                       <div className="bg-[#232e47] rounded-full p-2">
@@ -131,8 +132,6 @@ export default function TeamsPage() {
                     </div>
                     <span className="font-bold text-white text-lg mb-1 group-hover:text-[#4fd1c5] transition">{team.name}</span>
                     <span className="text-xs text-gray-400 mb-1">{team.members} member{team.members !== 1 && "s"}</span>
-                    {/* Optionally show team id for debugging: */}
-                    {/* <span className="text-[10px] text-gray-600 mt-1">ID: {team.id}</span> */}
                   </div>
                 ))}
               </div>
@@ -176,6 +175,7 @@ export default function TeamsPage() {
                 </form>
               </div>
             )}
+            {/* Removed Team Overview Modal for direct navigation */}
           </div>
         </div>
       </main>
