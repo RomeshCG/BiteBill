@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 interface Member {
   user_id: string;
   joined_at: string;
-  profiles: { full_name: string } | null;
+  full_name?: string | null;
 }
 
 interface Receipt {
@@ -59,7 +59,7 @@ export default function TeamDetailsPage() {
           <ul className="divide-y divide-[#232e47]">
             {members.map((m) => (
               <li key={m.user_id} className="py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                <span className="text-white font-medium">{m.profiles?.full_name || m.user_id}</span>
+                <span className="text-white font-medium">{m.full_name ? m.full_name : 'Unknown Member'}</span>
                 <span className="text-xs text-gray-400">Joined: {new Date(m.joined_at).toLocaleDateString()}</span>
               </li>
             ))}

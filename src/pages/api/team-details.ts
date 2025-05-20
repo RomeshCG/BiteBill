@@ -1,7 +1,13 @@
-// This API route returns details for a specific team, including team info, members, and bill history.
+// This API route returns details for a specific
 import { supabase } from '../../../lib/supabase';
 
 import type { NextApiRequest, NextApiResponse } from 'next';
+
+/*
+  Fix for Supabase join: use the correct foreign key join notation for the profiles table.
+  The join should be: profiles!user_id(full_name)
+  This matches team_members.user_id to profiles.id
+*/
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const { teamId } = req.query;
@@ -15,12 +21,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .single();
   if (teamError || !team) return res.status(404).json({ error: 'Team not found' });
 
-  // Fetch team members with join date and profile
+  // Fetch team members with join date
   const { data: members, error: membersError } = await supabase
     .from('team_members')
-    .select('user_id, joined_at, profiles(full_name)')
+    .select('user_id, joined_at')
     .eq('team_id', teamId);
   if (membersError) return res.status(500).json({ error: 'Failed to fetch members' });
+
+  // Fetch profiles for all user_ids (ensure userIds is not empty)
+  const userIds = (members || []).map((m) => m.user_id);
+  let profilesMap: Record<string, { full_name: string }> = {};
+  if (userIds.length > 0) {
+    const userIdsStr = userIds.map((id) => String(id));
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', userIdsStr);
+    if (profilesError) {
+      return res.status(500).json({ error: 'Failed to fetch profiles' });
+    }
+    if (profiles) {
+      profilesMap = Object.fromEntries(profiles.map((p) => [p.id, { full_name: p.full_name }]));
+    }
+  }
+  // Attach full_name to each member
+  const membersWithNames = (members || []).map((m) => ({
+    ...m,
+    full_name: profilesMap[m.user_id]?.full_name || m.user_id,
+  }));
 
   // Fetch team bill history (receipts)
   const { data: receipts, error: receiptsError } = await supabase
@@ -30,5 +58,5 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .order('created_at', { ascending: false });
   if (receiptsError) return res.status(500).json({ error: 'Failed to fetch receipts' });
 
-  res.status(200).json({ team, members, receipts });
+  res.status(200).json({ team, members: membersWithNames, receipts });
 }
