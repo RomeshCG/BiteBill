@@ -2,8 +2,10 @@
 import React from "react";
 import { FaUsers, FaHistory, FaCog, FaHome } from "react-icons/fa";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 export default function DashboardSidebar({ userName }: { userName: string }) {
+  const pathname = usePathname();
   const handleLogout = async () => {
     await fetch("/api/auth/logout", { method: "POST" });
     localStorage.clear();
@@ -18,16 +20,38 @@ export default function DashboardSidebar({ userName }: { userName: string }) {
         <div className="mt-4 font-semibold">{userName}</div>
       </div>
       <nav className="flex flex-col gap-2">
-        <Link href="/dashboard" className="flex items-center gap-3 px-3 py-2 rounded-lg bg-[#17223b] font-medium">
+        <Link
+          href="/dashboard"
+          className={`flex items-center gap-3 px-3 py-2 rounded-lg font-medium ${
+            pathname === "/dashboard"
+              ? "bg-[#17223b]"
+              : "hover:bg-[#17223b]"
+          }`}
+        >
           <FaHome /> Dashboard
         </Link>
-        <Link href="/teams" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#17223b]">
+        <Link
+          href="/teams"
+          className={`flex items-center gap-3 px-3 py-2 rounded-lg font-medium ${
+            pathname === "/teams" ? "bg-[#17223b]" : "hover:bg-[#17223b]"
+          }`}
+        >
           <FaUsers /> Teams
         </Link>
-        <Link href="/history" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#17223b]">
+        <Link
+          href="/history"
+          className={`flex items-center gap-3 px-3 py-2 rounded-lg font-medium ${
+            pathname === "/history" ? "bg-[#17223b]" : "hover:bg-[#17223b]"
+          }`}
+        >
           <FaHistory /> History
         </Link>
-        <Link href="/settings" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-[#17223b]">
+        <Link
+          href="/settings"
+          className={`flex items-center gap-3 px-3 py-2 rounded-lg font-medium ${
+            pathname === "/settings" ? "bg-[#17223b]" : "hover:bg-[#17223b]"
+          }`}
+        >
           <FaCog /> Settings
         </Link>
       </nav>

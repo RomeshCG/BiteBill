@@ -34,23 +34,36 @@ export default function DashboardPage() {
     const fetchData = async () => {
       setDataLoading(true);
       // Fetch teams
-      type TeamMemberRow = { team_id: string; teams: { name: string }[] };
       const { data: teamMembers } = await supabase
         .from("team_members")
-        .select("team_id, teams(name)")
+        .select("team_id")
         .eq("user_id", user.id);
-      const userTeams: Team[] = (teamMembers || []).map((tm: TeamMemberRow) => ({
-        name: tm.teams?.[0]?.name || "",
-        members: 0, // We'll fetch member count below
-        id: tm.team_id,
-      }));
-      // Fetch member counts for each team
-      for (const t of userTeams) {
-        const { count } = await supabase
+      const teamIds = (teamMembers || []).map((tm: { team_id: string }) => tm.team_id);
+      let userTeams: Team[] = [];
+      if (teamIds.length > 0) {
+        // Fetch team names
+        const { data: teamsData } = await supabase
+          .from("teams")
+          .select("id, name")
+          .in("id", teamIds);
+        const teamNameMap: Record<string, string> = {};
+        (teamsData || []).forEach((row: { id: string; name: string }) => {
+          teamNameMap[row.id] = row.name;
+        });
+        // Fetch all member counts in one query
+        const { data: allMembers } = await supabase
           .from("team_members")
-          .select("id", { count: "exact", head: true })
-          .eq("team_id", t.id);
-        t.members = count || 0;
+          .select("team_id")
+          .in("team_id", teamIds);
+        const memberCountMap: Record<string, number> = {};
+        (allMembers || []).forEach((row: { team_id: string }) => {
+          memberCountMap[row.team_id] = (memberCountMap[row.team_id] || 0) + 1;
+        });
+        userTeams = (teamIds || []).map((id: string) => ({
+          id,
+          name: teamNameMap[id] || "",
+          members: memberCountMap[id] || 0,
+        }));
       }
       setTeams(userTeams);
       // Fetch receipts (bills)
@@ -59,6 +72,8 @@ export default function DashboardPage() {
         created_at: string;
         team_id: string;
         receipt_items: { amount: number }[];
+        title: string;
+        id: string;
       };
       const { data: receipts } = await supabase
         .from("receipts")
