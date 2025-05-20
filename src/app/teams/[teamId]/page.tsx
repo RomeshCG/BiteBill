@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 
 interface Member {
   user_id: string;
@@ -15,7 +16,9 @@ interface Receipt {
   created_by: string;
 }
 
-export default function TeamDetailsPage({ params }: { params: { teamId: string } }) {  // const router = useRouter();
+export default function TeamDetailsPage() {
+  const params = useParams();
+  const teamId = params && typeof params.teamId === 'string' ? params.teamId : Array.isArray(params?.teamId) ? params.teamId[0] : '';
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [team, setTeam] = useState<{ id: string; name: string; created_at: string } | null>(null);
@@ -27,7 +30,7 @@ export default function TeamDetailsPage({ params }: { params: { teamId: string }
       setLoading(true);
       setError("");
       try {
-        const res = await fetch(`/api/team-details?teamId=${params.teamId}`);
+        const res = await fetch(`/api/team-details?teamId=${teamId}`);
         if (!res.ok) throw new Error("Failed to fetch team details");
         const data = await res.json();
         setTeam(data.team);
@@ -39,8 +42,8 @@ export default function TeamDetailsPage({ params }: { params: { teamId: string }
         setLoading(false);
       }
     }
-    fetchTeamDetails();
-  }, [params.teamId]);
+    if (teamId) fetchTeamDetails();
+  }, [teamId]);
 
   if (loading) return <div className="text-center text-white py-10">Loading...</div>;
   if (error) return <div className="text-center text-red-400 py-10">{error}</div>;
