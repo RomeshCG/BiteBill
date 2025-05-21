@@ -20,12 +20,20 @@ interface Bill {
   members: number;
   amount: number;
 }
+interface Invite {
+  id: string;
+  team_id: string;
+  invited_by: string;
+  accepted: boolean | null;
+  team_name?: string;
+}
 
 export default function DashboardPage() {
   const { user, profile, loading } = useUser() || {};
   const [stats, setStats] = useState({ totalSpent: 0, activeTeams: 0, billsCreated: 0 });
   const [bills, setBills] = useState<Bill[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
+  const [invites, setInvites] = useState<Invite[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -99,6 +107,26 @@ export default function DashboardPage() {
     fetchData();
   }, [user]);
 
+  useEffect(() => {
+    if (!user || !user.email) return;
+    // Fetch invites
+    fetch(`/api/dashboard/team-invites?email=${encodeURIComponent(user.email)}`)
+      .then(res => res.json())
+      .then(data => setInvites(data.invites || []));
+  }, [user]);
+
+  const handleInviteAction = async (invite_id: string, accept: boolean) => {
+    if (!user) return;
+    const res = await fetch('/api/dashboard/team-invites', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ invite_id, accept, user_id: user.id })
+    });
+    if (res.ok) {
+      setInvites(invites => invites.filter(i => i.id !== invite_id));
+    }
+  };
+
   // Responsive sidebar toggle
   const handleSidebarToggle = () => setSidebarOpen((open) => !open);
 
@@ -139,6 +167,23 @@ export default function DashboardPage() {
       <main className="flex-1 p-4 sm:p-8 ml-0 sm:ml-64">
         <div className="sm:mt-0 mt-20"> {/* Push content down on mobile for toggle button */}
           <h1 className="text-2xl font-bold text-white mb-6">Dashboard</h1>
+          {/* Pending Invites Section */}
+          {invites.length > 0 && (
+            <div className="bg-[#17223b] rounded-2xl p-6 mb-6 shadow-lg border border-[#232e47]">
+              <h2 className="text-lg font-semibold text-[#4fd1c5] mb-2">Pending Invites</h2>
+              <ul className="divide-y divide-[#232e47]">
+                {invites.map(invite => (
+                  <li key={invite.id} className="py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                    <span className="text-white font-medium">Team Invite: {invite.team_name || invite.team_id}</span>
+                    <div className="flex gap-2 mt-2 sm:mt-0">
+                      <button className="bg-green-500 text-white px-3 py-1 rounded" onClick={() => handleInviteAction(invite.id, true)}>Accept</button>
+                      <button className="bg-red-500 text-white px-3 py-1 rounded" onClick={() => handleInviteAction(invite.id, false)}>Reject</button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <DashboardStats {...stats} />
           <RecentBills bills={bills} />
           <YourTeams teams={teams} />
