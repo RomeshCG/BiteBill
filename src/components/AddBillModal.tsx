@@ -20,7 +20,7 @@ const mockCategories = [
   'Other',
 ];
 
-const AddBillModal = ({ open, onClose, teams = [], currentUserId = "" }: { open: boolean; onClose: () => void; teams?: Team[]; currentUserId?: string }) => {
+const AddBillModal = ({ open, onClose, teams = [], currentUserId = "", editMode = false, editBill = null }: { open: boolean; onClose: () => void; teams?: Team[]; currentUserId?: string; editMode?: boolean; editBill?: any }) => {
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState('');
@@ -33,6 +33,33 @@ const AddBillModal = ({ open, onClose, teams = [], currentUserId = "" }: { open:
   const [error, setError] = useState<string | null>(null);
   const [payers, setPayers] = useState<string[]>([currentUserId]);
   const [payerAmounts, setPayerAmounts] = useState<Record<string, string>>({ [currentUserId]: amount });
+
+  // Pre-fill fields in edit mode
+  useEffect(() => {
+    if (editMode && editBill) {
+      setTitle(editBill.title || '');
+      setAmount(editBill.amount ? String(editBill.amount) : '');
+      // Defensive date parsing
+      let parsedDate = '';
+      if (editBill.date) {
+        const d = new Date(editBill.date);
+        if (!isNaN(d.getTime())) {
+          parsedDate = d.toISOString().slice(0, 10);
+        } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(editBill.date)) {
+          // If already in dd/mm/yyyy, convert to yyyy-mm-dd
+          const [day, month, year] = editBill.date.split('/');
+          parsedDate = `${year}-${month}-${day}`;
+        } else {
+          parsedDate = '';
+        }
+      }
+      setDate(parsedDate);
+      setSelectedTeamId(editBill.team_id || '');
+      // TODO: fetch and set splits, payers, etc. if available
+    } else if (!open) {
+      setTitle(''); setAmount(''); setDate(''); setSelectedTeamId(''); setSelectedMembers([]); setSplitMethod('equal'); setCustomSplits({}); setPercentageSplits({}); setPayers([currentUserId]); setPayerAmounts({ [currentUserId]: '' });
+    }
+  }, [editMode, editBill, open, currentUserId]);
 
   // Reset members when team changes
   useEffect(() => {
@@ -110,34 +137,56 @@ const AddBillModal = ({ open, onClose, teams = [], currentUserId = "" }: { open:
           return;
         }
       }
-      // Call backend API
-      const res = await fetch('/api/dashboard/add-receipt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          team_id: selectedTeamId,
-          created_by: currentUserId,
-          title,
-          amount: total,
-          date,
-          members: selectedMembers,
-          split_type: splitMethod,
-          splits,
-          payments,
-        })
-      });
-      if (!res.ok) {
-        const data = await res.json();
-        setError(data.error || 'Failed to create bill.');
-        setLoading(false);
-        return;
+      if (editMode && editBill) {
+        // Edit bill
+        const res = await fetch('/api/dashboard/edit-receipt', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            receipt_id: editBill.id,
+            user_id: currentUserId,
+            title,
+            amount: total,
+            date,
+            splits,
+            payments,
+          })
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          setError(data.error || 'Failed to edit bill.');
+          setLoading(false);
+          return;
+        }
+      } else {
+        // Add bill
+        const res = await fetch('/api/dashboard/add-receipt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            team_id: selectedTeamId,
+            created_by: currentUserId,
+            title,
+            amount: total,
+            date,
+            members: selectedMembers,
+            split_type: splitMethod,
+            splits,
+            payments,
+          })
+        });
+        if (!res.ok) {
+          const data = await res.json();
+          setError(data.error || 'Failed to create bill.');
+          setLoading(false);
+          return;
+        }
       }
       // Success
       setLoading(false);
       onClose();
-      // Optionally reset form here
     } catch (err: any) {
-      setError('Failed to create bill.');
+      setError('Failed to save bill.');
       setLoading(false);
     }
   };
@@ -152,7 +201,7 @@ const AddBillModal = ({ open, onClose, teams = [], currentUserId = "" }: { open:
         >
           ×
         </button>
-        <h2 className="text-2xl font-bold mb-6">Add New Bill</h2>
+        <h2 className="text-2xl font-bold mb-6">{editMode ? 'Edit Bill' : 'Add New Bill'}</h2>
         <form className="space-y-4" onSubmit={handleSubmit}>
           <div>
             <label className="block mb-1 font-medium">Team</label>
@@ -349,7 +398,7 @@ const AddBillModal = ({ open, onClose, teams = [], currentUserId = "" }: { open:
               className="px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-semibold"
               disabled={loading}
             >
-              {loading ? 'Creating...' : 'Create Bill'}
+              {loading ? (editMode ? 'Saving...' : 'Creating...') : (editMode ? 'Save Changes' : 'Create Bill')}
             </button>
           </div>
           {error && <div className="text-red-400 text-sm mt-2">{error}</div>}

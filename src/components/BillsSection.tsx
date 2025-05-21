@@ -26,6 +26,7 @@ const BillsSection = ({ teams = [], currentUserId = "" }: { teams?: Team[]; curr
   const [showModal, setShowModal] = useState(false);
   const [bills, setBills] = useState<Bill[]>([]);
   const [loading, setLoading] = useState(false);
+  const [editBill, setEditBill] = useState<Bill | null>(null);
 
   const fetchBills = async (tab: 'all' | 'paid' | 'owe') => {
     if (!currentUserId) return;
@@ -43,7 +44,13 @@ const BillsSection = ({ teams = [], currentUserId = "" }: { teams?: Team[]; curr
 
   const handleBillAdded = () => {
     setShowModal(false);
+    setEditBill(null);
     fetchBills(activeTab);
+  };
+
+  const handleEdit = (bill: Bill) => {
+    setEditBill(bill);
+    setShowModal(true);
   };
 
   return (
@@ -93,19 +100,27 @@ const BillsSection = ({ teams = [], currentUserId = "" }: { teams?: Team[]; curr
                   <span className="font-semibold text-white">{bill.title}</span>
                   <span className="text-xs text-gray-400">{bill.team} &middot; {bill.date}</span>
                 </div>
-                {activeTab === 'owe' ? (
-                  <span className="font-bold text-[#f87171]">You owe ${bill.amount.toFixed(2)}</span>
-                ) : activeTab === 'paid' ? (
-                  <span className="font-bold text-[#38b2ac]">You paid ${bill.amount.toFixed(2)}</span>
-                ) : (
-                  <span className="font-bold text-[#4fd1c5]">${bill.amount.toFixed(2)}</span>
-                )}
+                <div className="flex items-center gap-2">
+                  {activeTab === 'owe' ? (
+                    <span className="font-bold text-[#f87171]">You owe ${bill.amount.toFixed(2)}</span>
+                  ) : activeTab === 'paid' ? (
+                    <span className="font-bold text-[#38b2ac]">You paid ${bill.amount.toFixed(2)}</span>
+                  ) : (
+                    <span className="font-bold text-[#4fd1c5]">${bill.amount.toFixed(2)}</span>
+                  )}
+                  <button
+                    className="ml-2 px-2 py-1 rounded bg-[#23232a] text-xs text-white border border-[#4fd1c5] hover:bg-[#4fd1c5] hover:text-[#23232a] transition"
+                    onClick={() => handleEdit(bill)}
+                  >
+                    Edit
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
         )}
       </div>
-      <AddBillModal open={showModal} onClose={handleBillAdded} teams={teams} currentUserId={currentUserId} />
+      <AddBillModal open={showModal} onClose={handleBillAdded} teams={teams} currentUserId={currentUserId} editBill={editBill} editMode={!!editBill} />
     </div>
   );
 };
