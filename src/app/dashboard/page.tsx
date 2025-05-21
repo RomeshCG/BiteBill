@@ -7,6 +7,7 @@ import DashboardStats from "../../components/DashboardStats";
 import RecentBills from "../../components/RecentBills";
 import YourTeams from "../../components/YourTeams";
 import { FaBars } from "react-icons/fa";
+import FloatingAddBillButton from '../../components/FloatingAddBillButton';
 
 // Types for teams and bills
 interface Team {
@@ -188,6 +189,7 @@ export default function DashboardPage() {
           <RecentBills bills={bills} />
           <YourTeams teams={teams} />
         </div>
+        <FloatingAddBillButton />
       </main>
     </div>
   );

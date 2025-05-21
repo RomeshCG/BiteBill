@@ -1,0 +1,300 @@
+import React, { useState, useEffect } from 'react';
+
+interface Member {
+  id: string;
+  name: string;
+  avatar_url?: string;
+  isCreator?: boolean;
+}
+interface Team {
+  id: string;
+  name: string;
+  members: Member[];
+}
+
+const mockCategories = [
+  'Food',
+  'Travel',
+  'Utilities',
+  'Entertainment',
+  'Other',
+];
+
+const AddBillModal = ({ open, onClose, teams = [], currentUserId = "" }: { open: boolean; onClose: () => void; teams?: Team[]; currentUserId?: string }) => {
+  const [title, setTitle] = useState('');
+  const [amount, setAmount] = useState('');
+  const [date, setDate] = useState('');
+  const [selectedTeamId, setSelectedTeamId] = useState<string>('');
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const [splitMethod, setSplitMethod] = useState<'equal' | 'custom' | 'percentage'>('equal');
+  const [customSplits, setCustomSplits] = useState<Record<string, string>>({});
+  const [percentageSplits, setPercentageSplits] = useState<Record<string, string>>({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Reset members when team changes
+  useEffect(() => {
+    if (selectedTeamId && Array.isArray(teams)) {
+      const team = teams.find(t => t.id === selectedTeamId);
+      if (team) {
+        setSelectedMembers([currentUserId]); // Always include creator
+        setCustomSplits({ [currentUserId]: '' });
+        setPercentageSplits({ [currentUserId]: '' });
+      }
+    }
+  }, [selectedTeamId, currentUserId, teams]);
+
+  if (!open) return null;
+
+  const selectedTeam = Array.isArray(teams) ? teams.find(t => t.id === selectedTeamId) : undefined;
+  const members = selectedTeam && Array.isArray(selectedTeam.members) ? selectedTeam.members : [];
+
+  // Bill creation handler
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      // Calculate splits
+      let splits: { user_id: string; amount_owed: number }[] = [];
+      const total = parseFloat(amount);
+      if (!selectedTeamId || !title || !total || !date || selectedMembers.length === 0) {
+        setError('Please fill all required fields.');
+        setLoading(false);
+        return;
+      }
+      if (splitMethod === 'equal') {
+        const share = parseFloat((total / selectedMembers.length).toFixed(2));
+        splits = selectedMembers.map(uid => ({ user_id: uid, amount_owed: share }));
+      } else if (splitMethod === 'custom') {
+        let sum = 0;
+        splits = selectedMembers.map(uid => {
+          const val = parseFloat(customSplits[uid] || '0');
+          sum += val;
+          return { user_id: uid, amount_owed: val };
+        });
+        if (Math.abs(sum - total) > 0.01) {
+          setError('Custom amounts must sum to total amount.');
+          setLoading(false);
+          return;
+        }
+      } else if (splitMethod === 'percentage') {
+        let sum = 0;
+        splits = selectedMembers.map(uid => {
+          const percent = parseFloat(percentageSplits[uid] || '0');
+          sum += percent;
+          return { user_id: uid, amount_owed: parseFloat(((percent / 100) * total).toFixed(2)) };
+        });
+        if (Math.abs(sum - 100) > 0.01) {
+          setError('Percentages must sum to 100%.');
+          setLoading(false);
+          return;
+        }
+      }
+      // Call backend API
+      const res = await fetch('/api/dashboard/add-receipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          team_id: selectedTeamId,
+          created_by: currentUserId,
+          title,
+          amount: total,
+          date,
+          members: selectedMembers,
+          split_type: splitMethod,
+          splits,
+        })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error || 'Failed to create bill.');
+        setLoading(false);
+        return;
+      }
+      // Success
+      setLoading(false);
+      onClose();
+      // Optionally reset form here
+    } catch (err: any) {
+      setError('Failed to create bill.');
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
+      <div className="bg-[#18181b] rounded-xl w-full max-w-md p-8 relative text-white shadow-lg">
+        <button
+          className="absolute top-4 right-4 text-gray-400 hover:text-white text-2xl"
+          onClick={onClose}
+          aria-label="Close"
+        >
+          ×
+        </button>
+        <h2 className="text-2xl font-bold mb-6">Add New Bill</h2>
+        <form className="space-y-4" onSubmit={handleSubmit}>
+          <div>
+            <label className="block mb-1 font-medium">Team</label>
+            <select
+              className="w-full rounded-md bg-[#23232a] border border-[#23232a] focus:border-blue-500 px-3 py-2 outline-none"
+              value={selectedTeamId}
+              onChange={e => setSelectedTeamId(e.target.value)}
+            >
+              <option value="">Select a team</option>
+              {teams.map(team => (
+                <option key={team.id} value={team.id}>{team.name}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block mb-1 font-medium">Bill Title</label>
+            <input
+              className="w-full rounded-md bg-[#23232a] border border-[#23232a] focus:border-blue-500 px-3 py-2 outline-none"
+              value={title}
+              onChange={e => setTitle(e.target.value)}
+              placeholder="Enter bill title"
+            />
+          </div>
+          <div>
+            <label className="block mb-1 font-medium">Total Amount</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              className="w-full rounded-md bg-[#23232a] border border-[#23232a] focus:border-blue-500 px-3 py-2 outline-none"
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
+              placeholder="0.00"
+            />
+          </div>
+          <div>
+            <label className="block mb-1 font-medium">Date</label>
+            <input
+              type="date"
+              className="w-full rounded-md bg-[#23232a] border border-[#23232a] focus:border-blue-500 px-3 py-2 outline-none"
+              value={date}
+              onChange={e => setDate(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block mb-1 font-medium">Select Team Members</label>
+            <div className="flex flex-wrap gap-2">
+              {Array.isArray(members) ? members.map(member => (
+                <button
+                  type="button"
+                  key={member.id}
+                  className={`px-3 py-2 rounded-md border text-sm font-medium transition-colors ${selectedMembers.includes(member.id)
+                    ? 'bg-blue-700 border-blue-700 text-white'
+                    : 'bg-[#23232a] border-[#23232a] text-gray-300'} ${member.isCreator ? 'opacity-70 cursor-not-allowed' : ''}`}
+                  disabled={!!member.isCreator}
+                  onClick={() => {
+                    if (!member.isCreator) {
+                      setSelectedMembers(m => m.includes(member.id)
+                        ? m.filter(id => id !== member.id)
+                        : [...m, member.id]);
+                    }
+                  }}
+                >
+                  {member.name}
+                </button>
+              )) : null}
+            </div>
+          </div>
+          <div>
+            <label className="block mb-1 font-medium">Split Method</label>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                className={`px-4 py-2 rounded-md border text-sm font-medium transition-colors ${splitMethod === 'equal' ? 'bg-blue-700 border-blue-700 text-white' : 'bg-[#23232a] border-[#23232a] text-gray-300'}`}
+                onClick={() => setSplitMethod('equal')}
+              >
+                Equal Split
+              </button>
+              <button
+                type="button"
+                className={`px-4 py-2 rounded-md border text-sm font-medium transition-colors ${splitMethod === 'custom' ? 'bg-blue-700 border-blue-700 text-white' : 'bg-[#23232a] border-[#23232a] text-gray-300'}`}
+                onClick={() => setSplitMethod('custom')}
+              >
+                Custom Amount
+              </button>
+              <button
+                type="button"
+                className={`px-4 py-2 rounded-md border text-sm font-medium transition-colors ${splitMethod === 'percentage' ? 'bg-blue-700 border-blue-700 text-white' : 'bg-[#23232a] border-[#23232a] text-gray-300'}`}
+                onClick={() => setSplitMethod('percentage')}
+              >
+                Percentage
+              </button>
+            </div>
+          </div>
+          {/* Custom/Percentage Split Inputs */}
+          {splitMethod === 'custom' && (
+            <div>
+              <label className="block mb-1 font-medium">Custom Amounts</label>
+              {Array.isArray(selectedMembers) ? selectedMembers.map(memberId => {
+                const member = Array.isArray(members) ? members.find(m => m.id === memberId) : undefined;
+                return (
+                  <div key={memberId} className="flex items-center gap-2 mb-2">
+                    <span className="w-32 truncate">{member?.name || memberId}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      className="rounded-md bg-[#23232a] border border-[#23232a] focus:border-blue-500 px-3 py-2 outline-none flex-1"
+                      value={customSplits[memberId] || ''}
+                      onChange={e => setCustomSplits(s => ({ ...s, [memberId]: e.target.value }))}
+                      placeholder="Amount"
+                    />
+                  </div>
+                );
+              }) : null}
+            </div>
+          )}
+          {splitMethod === 'percentage' && (
+            <div>
+              <label className="block mb-1 font-medium">Percentages</label>
+              {Array.isArray(selectedMembers) ? selectedMembers.map(memberId => {
+                const member = Array.isArray(members) ? members.find(m => m.id === memberId) : undefined;
+                return (
+                  <div key={memberId} className="flex items-center gap-2 mb-2">
+                    <span className="w-32 truncate">{member?.name || memberId}</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      className="rounded-md bg-[#23232a] border border-[#23232a] focus:border-blue-500 px-3 py-2 outline-none flex-1"
+                      value={percentageSplits[memberId] || ''}
+                      onChange={e => setPercentageSplits(s => ({ ...s, [memberId]: e.target.value }))}
+                      placeholder="%"
+                    />
+                  </div>
+                );
+              }) : null}
+            </div>
+          )}
+          <div className="flex justify-end gap-2 mt-6">
+            <button
+              type="button"
+              className="px-4 py-2 rounded-md border border-[#23232a] bg-[#23232a] text-gray-300 hover:bg-[#23232a]/80"
+              onClick={onClose}
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+              disabled={loading}
+            >
+              {loading ? 'Creating...' : 'Create Bill'}
+            </button>
+          </div>
+          {error && <div className="text-red-400 text-sm mt-2">{error}</div>}
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default AddBillModal;

@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const userIdsStr = userIds.map((id) => String(id));
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
-      .select('id, full_name')
+      .select('id, full_name, avatar_url')
       .in('id', userIdsStr);
     if (profilesError) {
       return res.status(500).json({ error: 'Failed to fetch profiles' });
