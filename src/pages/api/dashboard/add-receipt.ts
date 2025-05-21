@@ -12,7 +12,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     date,
     members, // array of user ids
     split_type, // 'equal' | 'custom' | 'percent'
-    splits // array of { user_id, amount_owed }
+    splits, // array of { user_id, amount_owed }
+    payments // array of { user_id, amount_paid }
   } = req.body;
 
   if (!team_id || !created_by || !title || !amount || !date || !Array.isArray(members) || !split_type || !Array.isArray(splits)) {
@@ -57,6 +58,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     },
   ]);
   if (itemError) return res.status(500).json({ error: itemError.message });
+
+  // Insert into payments
+  if (Array.isArray(payments) && payments.length > 0) {
+    const paymentsToInsert = payments.map((p: any) => ({
+      receipt_id: receipt.id,
+      user_id: p.user_id,
+      amount_paid: p.amount_paid,
+    }));
+    const { error: paymentsError } = await supabase.from("payments").insert(paymentsToInsert);
+    if (paymentsError) return res.status(500).json({ error: paymentsError.message });
+  }
 
   res.status(200).json({ receipt });
 }

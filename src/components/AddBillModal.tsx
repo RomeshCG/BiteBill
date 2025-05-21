@@ -31,6 +31,8 @@ const AddBillModal = ({ open, onClose, teams = [], currentUserId = "" }: { open:
   const [percentageSplits, setPercentageSplits] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [payers, setPayers] = useState<string[]>([currentUserId]);
+  const [payerAmounts, setPayerAmounts] = useState<Record<string, string>>({ [currentUserId]: amount });
 
   // Reset members when team changes
   useEffect(() => {
@@ -58,7 +60,7 @@ const AddBillModal = ({ open, onClose, teams = [], currentUserId = "" }: { open:
       // Calculate splits
       let splits: { user_id: string; amount_owed: number }[] = [];
       const total = parseFloat(amount);
-      if (!selectedTeamId || !title || !total || !date || selectedMembers.length === 0) {
+      if (!selectedTeamId || !title || !total || !date || selectedMembers.length === 0 || payers.length === 0) {
         setError('Please fill all required fields.');
         setLoading(false);
         return;
@@ -91,6 +93,23 @@ const AddBillModal = ({ open, onClose, teams = [], currentUserId = "" }: { open:
           return;
         }
       }
+      // Calculate payments
+      let payments: { user_id: string; amount_paid: number }[] = [];
+      if (payers.length === 1) {
+        payments = [{ user_id: payers[0], amount_paid: total }];
+      } else {
+        let sum = 0;
+        payments = payers.map(uid => {
+          const val = parseFloat(payerAmounts[uid] || '0');
+          sum += val;
+          return { user_id: uid, amount_paid: val };
+        });
+        if (Math.abs(sum - total) > 0.01) {
+          setError('Payer amounts must sum to total amount.');
+          setLoading(false);
+          return;
+        }
+      }
       // Call backend API
       const res = await fetch('/api/dashboard/add-receipt', {
         method: 'POST',
@@ -104,6 +123,7 @@ const AddBillModal = ({ open, onClose, teams = [], currentUserId = "" }: { open:
           members: selectedMembers,
           split_type: splitMethod,
           splits,
+          payments,
         })
       });
       if (!res.ok) {
@@ -124,7 +144,7 @@ const AddBillModal = ({ open, onClose, teams = [], currentUserId = "" }: { open:
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-60">
-      <div className="bg-[#18181b] rounded-xl w-full max-w-md p-8 relative text-white shadow-lg">
+      <div className="bg-[#18181b] rounded-xl w-full max-w-full sm:max-w-md p-4 sm:p-8 relative text-white shadow-lg mx-2">
         <button
           className="absolute top-4 right-4 text-gray-400 hover:text-white text-2xl"
           onClick={onClose}
@@ -273,6 +293,48 @@ const AddBillModal = ({ open, onClose, teams = [], currentUserId = "" }: { open:
               }) : null}
             </div>
           )}
+          <div>
+            <label className="block mb-1 font-medium">Who Paid?</label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {Array.isArray(members) ? members.map(member => (
+                <button
+                  type="button"
+                  key={member.id}
+                  className={`px-3 py-2 rounded-md border text-sm font-medium transition-colors ${payers.includes(member.id)
+                    ? 'bg-green-700 border-green-700 text-white'
+                    : 'bg-[#23232a] border-[#23232a] text-gray-300'}`}
+                  onClick={() => {
+                    setPayers(p => p.includes(member.id)
+                      ? p.filter(id => id !== member.id)
+                      : [...p, member.id]);
+                  }}
+                >
+                  {member.name}
+                </button>
+              )) : null}
+            </div>
+            {payers.length > 1 && (
+              <div className="space-y-2">
+                {payers.map(uid => {
+                  const member = members.find(m => m.id === uid);
+                  return (
+                    <div key={uid} className="flex items-center gap-2">
+                      <span className="w-32 truncate">{member?.name || uid}</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        className="rounded-md bg-[#23232a] border border-[#23232a] focus:border-blue-500 px-3 py-2 outline-none flex-1"
+                        value={payerAmounts[uid] || ''}
+                        onChange={e => setPayerAmounts(a => ({ ...a, [uid]: e.target.value }))}
+                        placeholder="Amount paid"
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
           <div className="flex justify-end gap-2 mt-6">
             <button
               type="button"
