@@ -58,7 +58,6 @@ const BillsSection = ({ teams = [], currentUserId = "" }: { teams?: Team[]; curr
   return (
     <div id="your-bills-section" className="w-full max-w-2xl mx-auto mt-8">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-white">Your Bills</h1>
         <button
           className="flex items-center gap-2 px-4 py-2 rounded-md bg-blue-600 hover:bg-blue-700 text-white font-semibold text-base"
           onClick={() => setShowModal(true)}
@@ -106,7 +105,7 @@ const BillsSection = ({ teams = [], currentUserId = "" }: { teams?: Team[]; curr
           </select>
         </div>
       </div>
-      <div className="bg-[#18181b] rounded-xl p-8 flex flex-col items-center justify-center min-h-[200px] text-center border border-[#23232a]">
+      <div className="bg-[#18181b] rounded-xl p-4 sm:p-8 flex flex-col items-center justify-center min-h-[200px] text-center border border-[#23232a]">
         {loading ? (
           <p className="text-lg font-semibold text-gray-200 mb-2">Loading...</p>
         ) : bills.length === 0 ? (
@@ -117,17 +116,17 @@ const BillsSection = ({ teams = [], currentUserId = "" }: { teams?: Team[]; curr
         ) : (
           <ul className="w-full">
             {bills.map(bill => (
-              <li key={bill.id} className="flex justify-between items-center py-2 border-b border-[#23232a] last:border-b-0">
+              <li key={bill.id} className="flex flex-col sm:flex-row sm:justify-between sm:items-center py-2 border-b border-[#23232a] last:border-b-0 gap-2 sm:gap-0 text-left">
                 <div className="flex flex-col items-start">
                   <span className="font-semibold text-white">{bill.title} <span className="text-[#4fd1c5]">– {bill.team}</span></span>
                   <span className="text-xs text-gray-400">{bill.date}</span>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-2 w-full sm:w-auto">
                   {activeTab === 'owe' ? (
                     <>
                       <span className="font-bold text-[#f87171]">You owe {formatCurrency(bill.amount)}</span>
                       <button
-                        className="ml-2 px-2 py-1 rounded bg-green-600 text-xs text-white hover:bg-green-700 transition"
+                        className="px-2 py-1 rounded bg-green-600 text-xs text-white hover:bg-green-700 transition"
                         onClick={async () => {
                           await fetch('/api/dashboard/settle-split', {
                             method: 'POST',
@@ -153,7 +152,7 @@ const BillsSection = ({ teams = [], currentUserId = "" }: { teams?: Team[]; curr
                     <span className="font-bold text-[#4fd1c5]">{formatCurrency(bill.amount)}</span>
                   )}
                   <button
-                    className="ml-2 px-2 py-1 rounded bg-[#23232a] text-xs text-white border border-[#4fd1c5] hover:bg-[#4fd1c5] hover:text-[#23232a] transition"
+                    className="px-2 py-1 rounded bg-[#23232a] text-xs text-white border border-[#4fd1c5] hover:bg-[#4fd1c5] hover:text-[#23232a] transition"
                     onClick={() => handleEdit(bill)}
                   >
                     Edit
