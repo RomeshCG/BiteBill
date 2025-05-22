@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AddBillModal from './AddBillModal';
+import { formatCurrency } from '@/utils/currency';
 
 interface Member {
   id: string;
@@ -124,7 +125,7 @@ const BillsSection = ({ teams = [], currentUserId = "" }: { teams?: Team[]; curr
                 <div className="flex items-center gap-2">
                   {activeTab === 'owe' ? (
                     <>
-                      <span className="font-bold text-[#f87171]">You owe ${bill.amount.toFixed(2)}</span>
+                      <span className="font-bold text-[#f87171]">You owe {formatCurrency(bill.amount)}</span>
                       <button
                         className="ml-2 px-2 py-1 rounded bg-green-600 text-xs text-white hover:bg-green-700 transition"
                         onClick={async () => {
@@ -140,16 +141,16 @@ const BillsSection = ({ teams = [], currentUserId = "" }: { teams?: Team[]; curr
                       </button>
                     </>
                   ) : activeTab === 'paid' ? (
-                    <span className="font-bold text-[#38b2ac]">You paid ${bill.amount.toFixed(2)}</span>
+                    <span className="font-bold text-[#38b2ac]">You paid {formatCurrency(bill.amount)}</span>
                   ) : activeTab === 'settled' ? (
                     <span className="font-bold text-green-400 flex items-center gap-1">
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
-                      Settled ${bill.amount.toFixed(2)}
+                      Settled {formatCurrency(bill.amount)}
                     </span>
                   ) : (
-                    <span className="font-bold text-[#4fd1c5]">${bill.amount.toFixed(2)}</span>
+                    <span className="font-bold text-[#4fd1c5]">{formatCurrency(bill.amount)}</span>
                   )}
                   <button
                     className="ml-2 px-2 py-1 rounded bg-[#23232a] text-xs text-white border border-[#4fd1c5] hover:bg-[#4fd1c5] hover:text-[#23232a] transition"

@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { FaUsers, FaHistory, FaCog, FaHome, FaReceipt } from "react-icons/fa";
+import { FaUsers, FaCog, FaHome, FaReceipt } from "react-icons/fa";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -45,14 +45,6 @@ export default function DashboardSidebar({ userName }: { userName: string }) {
           }`}
         >
           <FaUsers /> Teams
-        </Link>
-        <Link
-          href="/history"
-          className={`flex items-center gap-3 px-3 py-2 rounded-lg font-medium ${
-            pathname === "/history" ? "bg-[#17223b]" : "hover:bg-[#17223b]"
-          }`}
-        >
-          <FaHistory /> History
         </Link>
         <Link
           href="/settings"

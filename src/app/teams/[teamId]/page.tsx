@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import DashboardSidebar from "@/components/DashboardSidebar";
 import { FaBars } from "react-icons/fa";
 import { useUser } from "@/app/UserProvider";
+import { formatCurrency } from '@/utils/currency';
 
 interface Member {
   user_id: string;
@@ -240,7 +241,7 @@ export default function TeamDetailsPage() {
                               {split.is_removed && <span className="ml-1 text-xs">(Removed)</span>}
                             </span>
                             <span className={split.amount_owed > 0 ? 'text-green-400' : split.amount_owed < 0 ? 'text-red-400' : ''}>
-                              {split.amount_owed > 0 ? `+$${split.amount_owed.toFixed(2)}` : split.amount_owed < 0 ? `-$${Math.abs(split.amount_owed).toFixed(2)}` : '$0.00'}
+                              {split.amount_owed > 0 ? `+${formatCurrency(split.amount_owed)}` : split.amount_owed < 0 ? `-${formatCurrency(Math.abs(split.amount_owed))}` : formatCurrency(0)}
                             </span>
                           </div>
                         );

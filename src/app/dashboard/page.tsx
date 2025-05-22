@@ -21,6 +21,7 @@ interface Bill {
   date: string;
   members: number;
   amount: number;
+  title: string;
 }
 interface Invite {
   id: string;
@@ -79,7 +80,7 @@ export default function DashboardPage() {
       setTeams(userTeams);
       // Fetch receipts (bills)
       type ReceiptRow = {
-        team: { name: string }[];
+        teams: { name: string }[];
         created_at: string;
         team_id: string;
         receipt_items: { amount: number }[];
@@ -88,16 +89,23 @@ export default function DashboardPage() {
       };
       const { data: receipts } = await supabase
         .from("receipts")
-        .select("id, team_id, title, created_at, team:teams(name), receipt_items(amount)")
+        .select("id, team_id, title, created_at, teams(name), receipt_items(amount)")
         .in("team_id", userTeams.map(t => t.id))
         .order("created_at", { ascending: false })
         .limit(5);
-      const billsData: Bill[] = (receipts || []).map((r: ReceiptRow) => ({
-        team: r.team?.[0]?.name || "",
-        date: new Date(r.created_at).toLocaleDateString(),
-        members: userTeams.find(t => t.id === r.team_id)?.members || 0,
-        amount: (r.receipt_items || []).reduce((sum: number, item: { amount: number }) => sum + Number(item.amount), 0),
-      }));
+      const billsData: Bill[] = (receipts || []).map((r: ReceiptRow) => {
+        // Try to get the team name from the joined teams relation, otherwise fallback to userTeams
+        const teamName = r.teams && r.teams.length > 0 && r.teams[0].name
+          ? r.teams[0].name
+          : (userTeams.find(t => t.id === r.team_id)?.name || "");
+        return {
+          title: r.title,
+          team: teamName,
+          date: new Date(r.created_at).toLocaleDateString(),
+          members: userTeams.find(t => t.id === r.team_id)?.members || 0,
+          amount: (r.receipt_items || []).reduce((sum: number, item: { amount: number }) => sum + Number(item.amount), 0),
+        };
+      });
       setBills(billsData);
       // Stats
       setStats({

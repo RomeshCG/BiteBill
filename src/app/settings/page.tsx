@@ -1,7 +1,7 @@
 "use client";
 import DashboardSidebar from "../../components/DashboardSidebar";
 import { useUser } from "../UserProvider";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Image from "next/image";
 
 interface Profile {
@@ -9,7 +9,6 @@ interface Profile {
   full_name?: string;
   avatar_url?: string;
   created_at?: string;
-  currency?: string;
   theme?: 'light' | 'dark';
 }
 
@@ -25,6 +24,8 @@ export default function SettingsPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [message, setMessage] = useState({ type: '', text: '' });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!user || !supabase) return;
@@ -79,22 +80,6 @@ export default function SettingsPage() {
     }
   };
 
-  const updateCurrency = async (currency: string) => {
-    if (!supabase || !user) return;
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ currency })
-        .eq('id', user.id);
-
-      if (error) throw error;
-      setProfile(prev => prev ? { ...prev, currency } : null);
-      setMessage({ type: 'success', text: 'Currency updated successfully!' });
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Failed to update currency' });
-    }
-  };
-
   const deleteAccount = async () => {
     if (!supabase || !user) return;
     try {
@@ -109,6 +94,38 @@ export default function SettingsPage() {
     } catch (error) {
       setMessage({ type: 'error', text: 'Failed to delete account' });
     }
+  };
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || !e.target.files[0] || !supabase || !user) return;
+    setUploading(true);
+    const file = e.target.files[0];
+    const fileExt = file.name.split('.').pop();
+    const filePath = `avatars/${user.id}.${fileExt}`;
+    // Upload to Supabase Storage (ensure you have a bucket named 'avatars')
+    let { error: uploadError } = await supabase.storage.from('avatars').upload(filePath, file, { upsert: true });
+    if (uploadError) {
+      setMessage({ type: 'error', text: 'Failed to upload avatar' });
+      setUploading(false);
+      return;
+    }
+    // Get public URL
+    const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
+    const avatarUrl = data?.publicUrl;
+    if (avatarUrl) {
+      // Update profile in DB
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: avatarUrl })
+        .eq('id', user.id);
+      if (updateError) {
+        setMessage({ type: 'error', text: 'Failed to update avatar' });
+      } else {
+        setProfile(prev => prev ? { ...prev, avatar_url: avatarUrl } : null);
+        setMessage({ type: 'success', text: 'Profile picture updated!' });
+      }
+    }
+    setUploading(false);
   };
 
   if (loading || dataLoading) return <div className="flex items-center justify-center min-h-screen text-white">Loading...</div>;
@@ -166,7 +183,7 @@ export default function SettingsPage() {
                 alt="Avatar"
                 width={80}
                 height={80}
-                className="w-20 h-20 rounded-full mr-4"
+                className="w-20 h-20 rounded-full object-cover mr-4"
               />
               <div>
                 {isEditing ? (
@@ -241,22 +258,6 @@ export default function SettingsPage() {
               </div>
             </div>
           )}
-
-          {/* Currency Section */}
-          <div className="bg-[#17223b] rounded-xl p-6 mb-6">
-            <h2 className="text-xl font-semibold text-white mb-4">Currency Preferences</h2>
-            <select
-              value={profile?.currency || 'USD'}
-              onChange={(e) => updateCurrency(e.target.value)}
-              className="w-full bg-[#232e47] text-white px-3 py-2 rounded-lg"
-            >
-              <option value="USD">USD ($)</option>
-              <option value="EUR">EUR (€)</option>
-              <option value="GBP">GBP (£)</option>
-              <option value="INR">INR (₹)</option>
-              <option value="LKR">LKR (₨)</option>
-            </select>
-          </div>
 
           {/* Delete Account Section */}
           <div className="bg-[#17223b] rounded-xl p-6">
