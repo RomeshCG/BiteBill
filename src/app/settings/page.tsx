@@ -9,26 +9,107 @@ interface Profile {
   full_name?: string;
   avatar_url?: string;
   created_at?: string;
+  currency?: string;
+  theme?: 'light' | 'dark';
 }
 
 export default function SettingsPage() {
-  const { user, profile: userProfile, loading } = useUser() || {};
+  const { user, profile: userProfile, loading, supabase } = useUser() || {};
   const [profile, setProfile] = useState<Profile | null>(null);
   const [dataLoading, setDataLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [message, setMessage] = useState({ type: '', text: '' });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !supabase) return;
     setDataLoading(true);
     fetch(`/api/dashboard/settings-profile?user_id=${user.id}`)
       .then(res => res.json())
       .then(data => {
         setProfile(data.profile || null);
+        setNewName(data.profile?.full_name || '');
         setDataLoading(false);
       });
-  }, [user]);
+  }, [user, supabase]);
 
   const handleSidebarToggle = () => setSidebarOpen((open) => !open);
+
+  const updateProfile = async () => {
+    if (!supabase || !user) return;
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ full_name: newName })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      setProfile(prev => prev ? { ...prev, full_name: newName } : null);
+      setMessage({ type: 'success', text: 'Profile updated successfully!' });
+      setIsEditing(false);
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to update profile' });
+    }
+  };
+
+  const updatePassword = async () => {
+    if (!supabase) return;
+    if (newPassword !== confirmPassword) {
+      setMessage({ type: 'error', text: 'Passwords do not match' });
+      return;
+    }
+
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+
+      if (error) throw error;
+      setMessage({ type: 'success', text: 'Password updated successfully!' });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to update password' });
+    }
+  };
+
+  const updateCurrency = async (currency: string) => {
+    if (!supabase || !user) return;
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ currency })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      setProfile(prev => prev ? { ...prev, currency } : null);
+      setMessage({ type: 'success', text: 'Currency updated successfully!' });
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to update currency' });
+    }
+  };
+
+  const deleteAccount = async () => {
+    if (!supabase || !user) return;
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', user.id);
+
+      if (error) throw error;
+      await supabase.auth.signOut();
+      window.location.href = '/login';
+    } catch (error) {
+      setMessage({ type: 'error', text: 'Failed to delete account' });
+    }
+  };
 
   if (loading || dataLoading) return <div className="flex items-center justify-center min-h-screen text-white">Loading...</div>;
   if (!user) {
@@ -56,7 +137,7 @@ export default function SettingsPage() {
           onClick={handleSidebarToggle}
         />
       )}
-      {/* Sidebar (hidden on mobile unless open) */}
+      {/* Sidebar */}
       <aside
         className={`fixed z-30 top-0 left-0 h-full w-64 bg-[#10182A] transform transition-transform duration-200 ease-in-out
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full"} sm:static sm:translate-x-0 sm:w-64`}
@@ -65,22 +146,148 @@ export default function SettingsPage() {
       </aside>
       {/* Main content */}
       <main className="flex-1 p-4 sm:p-8 ml-0 sm:ml-64">
-        <div className="sm:mt-0 mt-20 max-w-md mx-auto">
+        <div className="sm:mt-0 mt-20 max-w-2xl mx-auto">
           <h1 className="text-2xl font-bold text-white mb-6">Settings</h1>
-          {profile && (
-            <div className="bg-[#17223b] rounded-xl p-6 flex flex-col items-center">
-                <Image
-                  src={profile.avatar_url || "/default-avatar.png"}
-                  alt="Avatar"
-                  width={80}
-                  height={80}
-                  className="w-20 h-20 rounded-full mb-4"
-                />
-              <div className="font-semibold text-white text-lg mb-2">{profile.full_name}</div>
-              <div className="text-xs text-gray-400 mb-2">User ID: {profile.id}</div>
-              <div className="text-xs text-gray-400">Joined: {profile.created_at ? new Date(profile.created_at).toLocaleDateString() : "-"}</div>
+          
+          {message.text && (
+            <div className={`p-4 mb-6 rounded-lg ${
+              message.type === 'success' ? 'bg-green-500' : 'bg-red-500'
+            } text-white`}>
+              {message.text}
             </div>
           )}
+
+          {/* Profile Section */}
+          <div className="bg-[#17223b] rounded-xl p-6 mb-6">
+            <h2 className="text-xl font-semibold text-white mb-4">Profile Settings</h2>
+            <div className="flex items-center mb-6">
+              <Image
+                src={profile?.avatar_url || "/default-avatar.png"}
+                alt="Avatar"
+                width={80}
+                height={80}
+                className="w-20 h-20 rounded-full mr-4"
+              />
+              <div>
+                {isEditing ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={newName}
+                      onChange={(e) => setNewName(e.target.value)}
+                      className="bg-[#232e47] text-white px-3 py-2 rounded-lg"
+                      placeholder="Enter your name"
+                    />
+                    <button
+                      onClick={updateProfile}
+                      className="bg-[#4fd1c5] text-[#232e47] px-4 py-2 rounded-lg hover:bg-[#38b2ac]"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => setIsEditing(false)}
+                      className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="font-semibold text-white text-lg">{profile?.full_name}</div>
+                    <button
+                      onClick={() => setIsEditing(true)}
+                      className="text-[#4fd1c5] hover:text-[#38b2ac] mt-2"
+                    >
+                      Edit Name
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Password Section */}
+          {user.app_metadata.provider === 'email' && (
+            <div className="bg-[#17223b] rounded-xl p-6 mb-6">
+              <h2 className="text-xl font-semibold text-white mb-4">Change Password</h2>
+              <div className="space-y-4">
+                <input
+                  type="password"
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  className="w-full bg-[#232e47] text-white px-3 py-2 rounded-lg"
+                  placeholder="Current Password"
+                />
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full bg-[#232e47] text-white px-3 py-2 rounded-lg"
+                  placeholder="New Password"
+                />
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full bg-[#232e47] text-white px-3 py-2 rounded-lg"
+                  placeholder="Confirm New Password"
+                />
+                <button
+                  onClick={updatePassword}
+                  className="bg-[#4fd1c5] text-[#232e47] px-4 py-2 rounded-lg hover:bg-[#38b2ac]"
+                >
+                  Update Password
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Currency Section */}
+          <div className="bg-[#17223b] rounded-xl p-6 mb-6">
+            <h2 className="text-xl font-semibold text-white mb-4">Currency Preferences</h2>
+            <select
+              value={profile?.currency || 'USD'}
+              onChange={(e) => updateCurrency(e.target.value)}
+              className="w-full bg-[#232e47] text-white px-3 py-2 rounded-lg"
+            >
+              <option value="USD">USD ($)</option>
+              <option value="EUR">EUR (€)</option>
+              <option value="GBP">GBP (£)</option>
+              <option value="INR">INR (₹)</option>
+              <option value="LKR">LKR (₨)</option>
+            </select>
+          </div>
+
+          {/* Delete Account Section */}
+          <div className="bg-[#17223b] rounded-xl p-6">
+            <h2 className="text-xl font-semibold text-white mb-4">Delete Account</h2>
+            {showDeleteConfirm ? (
+              <div className="space-y-4">
+                <p className="text-red-400">Are you sure you want to delete your account? This action cannot be undone.</p>
+                <div className="flex gap-4">
+                  <button
+                    onClick={deleteAccount}
+                    className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
+                  >
+                    Yes, Delete My Account
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600"
+              >
+                Delete Account
+              </button>
+            )}
+          </div>
         </div>
       </main>
     </div>
