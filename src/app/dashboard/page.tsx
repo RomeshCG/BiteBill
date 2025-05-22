@@ -8,6 +8,7 @@ import RecentBills from "../../components/RecentBills";
 import YourTeams from "../../components/YourTeams";
 import { FaBars } from "react-icons/fa";
 import FloatingAddBillButton from '../../components/FloatingAddBillButton';
+import AddBillModal from '../../components/AddBillModal';
 
 // Types for teams and bills
 interface Team {
@@ -37,6 +38,7 @@ export default function DashboardPage() {
   const [invites, setInvites] = useState<Invite[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showAddBillModal, setShowAddBillModal] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -190,6 +192,12 @@ export default function DashboardPage() {
           <YourTeams teams={teams} />
         </div>
         <FloatingAddBillButton />
+        <AddBillModal
+          open={showAddBillModal}
+          onClose={() => setShowAddBillModal(false)}
+          teams={[]}
+          currentUserId={user?.id}
+        />
       </main>
     </div>
   );

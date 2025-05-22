@@ -3,10 +3,7 @@ import { FaPlus } from 'react-icons/fa';
 
 const FloatingAddBillButton = () => {
   const handleClick = () => {
-    const el = document.getElementById('your-bills-section');
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    window.location.href = '/your-bills';
   };
   return (
     <button
