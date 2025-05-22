@@ -188,7 +188,7 @@ export default function DashboardPage() {
             </div>
           )}
           <DashboardStats {...stats} />
-          <RecentBills bills={bills} />
+          <RecentBills bills={bills.slice(0, 3)} />
           <YourTeams teams={teams} />
         </div>
         <FloatingAddBillButton />

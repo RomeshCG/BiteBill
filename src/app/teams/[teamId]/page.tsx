@@ -10,6 +10,16 @@ interface Member {
   user_id: string;
   joined_at: string;
   full_name?: string | null;
+  is_removed?: boolean;
+  removed_at?: string | null;
+}
+
+interface Split {
+  id: string;
+  receipt_id: string;
+  user_id: string;
+  amount_owed: number;
+  is_removed?: boolean;
 }
 
 interface Receipt {
@@ -17,6 +27,7 @@ interface Receipt {
   title: string;
   created_at: string;
   created_by: string;
+  splits: Split[];
 }
 
 export default function TeamDetailsPage() {
@@ -35,6 +46,7 @@ export default function TeamDetailsPage() {
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteStatus, setInviteStatus] = useState<string | null>(null);
   const [inviteLoading, setInviteLoading] = useState(false);
+  const [removingMember, setRemovingMember] = useState<string | null>(null);
 
   // Responsive sidebar toggle
   const handleSidebarToggle = () => setSidebarOpen((open) => !open);
@@ -85,6 +97,40 @@ export default function TeamDetailsPage() {
       setInviteStatus("Error sending invite");
     } finally {
       setInviteLoading(false);
+    }
+  }
+
+  // Remove Team Member handler
+  async function handleRemoveMember(userId: string) {
+    if (!team || !profile?.id) return;
+    
+    setRemovingMember(userId);
+    try {
+      const res = await fetch("/api/dashboard/remove-team-member", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          team_id: teamId,
+          user_id: userId,
+          removed_by: profile.id,
+        }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        // Refresh team details
+        const teamRes = await fetch(`/api/team-details?teamId=${teamId}`);
+        if (teamRes.ok) {
+          const teamData = await teamRes.json();
+          setTeam(teamData.team);
+          setMembers(teamData.members);
+        }
+      } else {
+        setError(data.error || "Failed to remove member");
+      }
+    } catch (err) {
+      setError("Error removing team member");
+    } finally {
+      setRemovingMember(null);
     }
   }
 
@@ -150,9 +196,23 @@ export default function TeamDetailsPage() {
               <h2 className="text-lg font-semibold text-[#4fd1c5] mb-2">Members</h2>
               <ul className="divide-y divide-[#232e47]">
                 {members.map((m) => (
-                  <li key={m.user_id} className="py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                    <span className="text-white font-medium truncate max-w-[150px]">{m.full_name ? m.full_name : 'Unknown Member'}</span>
-                    <span className="text-xs text-gray-400">Joined: {new Date(m.joined_at).toLocaleDateString()}</span>
+                  <li
+                    key={m.user_id}
+                    className={`py-2 flex flex-col sm:flex-row sm:items-center sm:justify-between ${m.is_removed ? 'opacity-50' : ''}`}
+                  >
+                    <span className={`font-medium truncate max-w-[150px] ${m.is_removed ? 'text-red-400' : 'text-white'}`}>{m.full_name ? m.full_name : 'Unknown Member'} {m.is_removed && <span className="ml-1 text-xs">(Removed)</span>}</span>
+                    <div className="flex items-center gap-4">
+                      <span className="text-xs text-gray-400">Joined: {new Date(m.joined_at).toLocaleDateString()}</span>
+                      {profile?.id === team?.created_by && m.user_id !== team?.created_by && !m.is_removed && (
+                        <button
+                          onClick={() => handleRemoveMember(m.user_id)}
+                          disabled={removingMember === m.user_id}
+                          className="text-red-400 hover:text-red-300 text-sm font-medium disabled:opacity-50"
+                        >
+                          {removingMember === m.user_id ? "Removing..." : "Remove"}
+                        </button>
+                      )}
+                    </div>
                   </li>
                 ))}
               </ul>
@@ -165,9 +225,27 @@ export default function TeamDetailsPage() {
             ) : (
               <ul className="divide-y divide-[#232e47]">
                 {receipts.map((r) => (
-                  <li key={r.id} className="py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                    <span className="text-white font-medium truncate max-w-[150px]">{r.title}</span>
-                    <span className="text-xs text-gray-400">{new Date(r.created_at).toLocaleDateString()}</span>
+                  <li key={r.id} className="py-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-2">
+                      <span className="text-white font-medium truncate max-w-[150px]">{r.title}</span>
+                      <span className="text-xs text-gray-400">{new Date(r.created_at).toLocaleDateString()}</span>
+                    </div>
+                    <div className="text-sm text-gray-400">
+                      {r.splits.map((split) => {
+                        const memberInfo = members.find(m => m.user_id === split.user_id);
+                        return (
+                          <div key={split.id} className={`flex justify-between items-center ${split.is_removed ? 'text-red-400 opacity-70' : ''}`}>
+                            <span>
+                              {memberInfo?.full_name || 'Unknown Member'}
+                              {split.is_removed && <span className="ml-1 text-xs">(Removed)</span>}
+                            </span>
+                            <span className={split.amount_owed > 0 ? 'text-green-400' : split.amount_owed < 0 ? 'text-red-400' : ''}>
+                              {split.amount_owed > 0 ? `+$${split.amount_owed.toFixed(2)}` : split.amount_owed < 0 ? `-$${Math.abs(split.amount_owed).toFixed(2)}` : '$0.00'}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </li>
                 ))}
               </ul>

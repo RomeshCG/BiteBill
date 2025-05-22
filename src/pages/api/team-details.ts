@@ -21,10 +21,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .single();
   if (teamError || !team) return res.status(404).json({ error: 'Team not found' });
 
-  // Fetch team members with join date
+  // Fetch team members with join date and is_removed
   const { data: members, error: membersError } = await supabase
     .from('team_members')
-    .select('user_id, joined_at')
+    .select('user_id, joined_at, is_removed, removed_at')
     .eq('team_id', teamId);
   if (membersError) return res.status(500).json({ error: 'Failed to fetch members' });
 
@@ -58,5 +58,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .order('created_at', { ascending: false });
   if (receiptsError) return res.status(500).json({ error: 'Failed to fetch receipts' });
 
-  res.status(200).json({ team, members: membersWithNames, receipts });
+  // Fetch splits for all receipts (bill history)
+  const receiptIds = (receipts || []).map((r) => r.id);
+  let splitsMap: Record<string, any[]> = {};
+  if (receiptIds.length > 0) {
+    const { data: splits, error: splitsError } = await supabase
+      .from('splits')
+      .select('id, receipt_id, user_id, amount_owed, is_removed')
+      .in('receipt_id', receiptIds);
+    if (!splitsError && splits) {
+      splitsMap = receiptIds.reduce((acc, rid) => {
+        acc[rid] = splits.filter((s) => s.receipt_id === rid);
+        return acc;
+      }, {} as Record<string, any[]>);
+    }
+  }
+  // Attach splits to each receipt
+  const receiptsWithSplits = (receipts || []).map((r) => ({
+    ...r,
+    splits: splitsMap[r.id] || [],
+  }));
+
+  res.status(200).json({ team, members: membersWithNames, receipts: receiptsWithSplits });
 }
