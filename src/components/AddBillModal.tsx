@@ -87,7 +87,7 @@ const AddBillModal = ({ open, onClose, teams = [], currentUserId = "", editMode 
       // Calculate splits
       let splits: { user_id: string; amount_owed: number }[] = [];
       const total = parseFloat(amount);
-      if (!selectedTeamId || !title || !total || !date || selectedMembers.length === 0 || payers.length === 0) {
+      if (!selectedTeamId || !title || !total || !date || selectedMembers.length === 0) {
         setError('Please fill all required fields.');
         setLoading(false);
         return;
@@ -122,7 +122,9 @@ const AddBillModal = ({ open, onClose, teams = [], currentUserId = "", editMode 
       }
       // Calculate payments
       let payments: { user_id: string; amount_paid: number }[] = [];
-      if (payers.length === 1) {
+      if (payers.length === 0) {
+        payments = []; // No one has paid yet
+      } else if (payers.length === 1) {
         payments = [{ user_id: payers[0], amount_paid: total }];
       } else {
         let sum = 0;
@@ -343,7 +345,7 @@ const AddBillModal = ({ open, onClose, teams = [], currentUserId = "", editMode 
             </div>
           )}
           <div>
-            <label className="block mb-1 font-medium">Who Paid?</label>
+            <label className="block mb-1 font-medium">Who Paid? <span className="text-gray-400 text-xs">(optional)</span></label>
             <div className="flex flex-wrap gap-2 mb-2">
               {Array.isArray(members) ? members.map(member => (
                 <button

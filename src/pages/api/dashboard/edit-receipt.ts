@@ -63,13 +63,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // Delete old payments and insert new
   await supabase.from("payments").delete().eq("receipt_id", receipt_id);
-  const paymentsToInsert = payments.map((p: any) => ({
-    receipt_id,
-    user_id: p.user_id,
-    amount_paid: p.amount_paid,
-  }));
-  const { error: paymentsError } = await supabase.from("payments").insert(paymentsToInsert);
-  if (paymentsError) return res.status(500).json({ error: paymentsError.message });
+  if (Array.isArray(payments) && payments.length > 0) {
+    const paymentsToInsert = payments.map((p: any) => ({
+      receipt_id,
+      user_id: p.user_id,
+      amount_paid: p.amount_paid,
+    }));
+    const { error: paymentsError } = await supabase.from("payments").insert(paymentsToInsert);
+    if (paymentsError) return res.status(500).json({ error: paymentsError.message });
+  }
 
   res.status(200).json({ success: true });
 } 
