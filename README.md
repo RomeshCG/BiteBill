@@ -1,6 +1,6 @@
 # 🧾 BiteBill – Smart Receipt Tracker & Expense Manager
 
-**BiteBill** is a modern, user-friendly web application that simplifies expense tracking and bill management. Whether you're handling personal budgets or managing shared expenses with a team, BiteBill keeps your finances organized and transparent.
+**BiteBill** is a modern, user-friendly web application that simplifies expense tracking and bill management. Whether you're handling personal budgets or managing shared expenses with a team, BiteBill keeps your finances organized and transparent. You can visit BiteBill using https://bitebill.romeshcg.live
 
 ---
 
