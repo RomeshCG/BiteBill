@@ -46,7 +46,7 @@ export default function FeaturesSection() {
 								alt={feature.title}
 								width={32}
 								height={32}
-								className=""
+								className="text-white"
 							/>
 						</div>
 						<h3 className="text-lg font-bold mb-2 text-white text-center">
